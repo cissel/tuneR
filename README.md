@@ -37,7 +37,7 @@ Check out a map of your favorite tracks in terms of valence (positivity) and ene
 
 ![vibeMap](https://user-images.githubusercontent.com/101683174/233723413-16fb2c70-133e-4dc5-85a1-06684e76e7b9.png)
 
-See when you found your favorite song or artist. You can see songs and albums you saved immediately on release day as well as when you discovered your favorite old tracks.
+See when you found your favorite song or artist. At the top of the chart you can see songs and albums you saved immediately on release day and at the bottom you can see when you discovered your favorite old tracks.
 
 ![discovery](https://user-images.githubusercontent.com/101683174/233723779-fc57d99d-0303-4062-bb8f-14995428fa04.png)
 
