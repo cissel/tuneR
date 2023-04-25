@@ -2,7 +2,7 @@
 
 Scroll down to get the TL;DR of what the visualizations look like.
 
-## First order of business: Install R & RStudio
+## Install R & RStudio
 
 I like to think of R & RStudio as a car that will take you where you want to go. R is like the engine under the hood. You know it is there and you need it to work properly, but if things are going smoothly then you don't need to open your hood every time you use your car. RStudio is like the driver's seat. This is where you take the wheel and head to your destination. Follow the link below to install R & RStudio. Posit does a good job of simplifying the download & install process. All you really need to do is check your operating system & update version to make sure you install the right versions.
 
