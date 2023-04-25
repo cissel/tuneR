@@ -18,6 +18,14 @@ After you've created a developer account go to your dashboard and create an app 
 
 Now you should have a Spotify API key and secret key (I think they call it a Client ID and Client Secret). You might have to go to Dashboard > [Your App] > Settings to find them, but you should see your Client ID and a button you need to click to see your Client Secret. Keep this tab open. We will be right back.
 
+## Open RStudio
+
+In the top left corner you should see a little white square with a green plus sign bubble. Click the dropdown menu and select R Markdown. It is going to show up with a default template, but delete all of that stuff. Come back when you're done.
+
+## Come back to GitHub
+
+Once you get back to this page, navigate to vibes.rmd in this repo. GitHub is awesome because you should see a button in the top right corner to copy my code. You should click that button. Then you should go back to RStudio & paste it in that empty .rmd file you just created. Then if you click the "Knit" dropdown menu and select "Knit to HTML", it will take you on a fun journey through your entire spotify history.
+
 # tuneR
 Use the Spotify API to pull data about your saved tracks to learn more about your taste in music and how it changes over time.
 
