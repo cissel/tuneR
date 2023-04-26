@@ -14,7 +14,7 @@ You need to create a Spotify for Developers account. Click the link below.
 
 https://developer.spotify.com/
 
-After you've created a developer account go to your dashboard and create an app - you can call it wherever you'd like. You can put whatever you want in the description. You can leave the website blank. You'll need to set your Redirect URI to "http://localhost:1410/" and then you can go ahead and save it.
+After you've created a developer account go to your dashboard and create an app - you can call it wherever you'd like. You can put whatever you want in the description. You can leave the website blank. You'll need to set your Redirect URI to http://localhost:1410/ and then you can go ahead and save it.
 
 Now you should have a Spotify API key and secret key (I think they call it a Client ID and Client Secret). You might have to go to Dashboard > [Your App] > Settings to find them, but you should see your Client ID and a button you need to click to see your Client Secret. Keep this tab open. We will be right back.
 
@@ -26,7 +26,7 @@ In the top left corner you should see a little white square with a green plus si
 
 Once you get back to this page, navigate to vibes.rmd in this repo. GitHub is awesome because you should see a button in the top right corner to copy my code. You should click that button. Then you should go back to RStudio & paste it in that empty .rmd file you just created. Go back to your Spotify for Developers tab and copy & paste your Client ID and Client Secret in the setup chunk of the .rmd file. Now you're ready to run the program. You should see a white box in the top right corner with a green arrow going to the right. Click that dropdown menu and select "Run All" at the bottom. It might take a long time to run. It will probably take a long time to run. For context on what to expect I have ~4k songs saved and it takes ~15 minutes to finish running on a brand new Macbook Pro. If you click the "Knit" dropdown menu and select "Knit to HTML", it will output an interactive HTML page that takes you on a fun journey through your entire Spotify saved tracks history.
 
-# tuneR
+# TuneR
 Use the Spotify API to pull data about your saved tracks to learn more about your taste in music and how it changes over time.
 
 Find out which keys you love and which ones you don't.
@@ -41,7 +41,7 @@ See when you found your favorite song or artist. At the top of the chart you can
 
 ![discovery](https://user-images.githubusercontent.com/101683174/233723779-fc57d99d-0303-4062-bb8f-14995428fa04.png)
 
-Watch yourself fall in love with pop music after years of indie/alt.
+Watch yourself fall in love with pop music after years of listening to almost exclusvely indie/alt.
 
 ![popularity](https://user-images.githubusercontent.com/101683174/233724406-2f4cd9ef-7983-4f49-904e-b4ccbde4c417.gif)
 
