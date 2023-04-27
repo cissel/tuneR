@@ -29,6 +29,10 @@ Once you get back to this page, navigate to vibes.rmd in this repo. GitHub is aw
 # TuneR
 Use the Spotify API to pull data about your saved tracks to learn more about your taste in music and how it changes over time.
 
+Check out a wordcloud of your favorite genres.
+
+![Rplot](https://user-images.githubusercontent.com/101683174/234728809-757e552c-059b-43f2-b4a5-6154d7e10736.png)
+
 Find out which keys you love and which ones you don't.
 
 ![keysModes](https://user-images.githubusercontent.com/101683174/233725834-250c27e5-c1e0-4bd0-8f90-f1527c2a4b1c.png)
