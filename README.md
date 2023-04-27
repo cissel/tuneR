@@ -22,9 +22,11 @@ Now you should have a Spotify API key and secret key (I think they call it a Cli
 
 In the top left corner you should see a little white square with a green plus sign bubble. Click the dropdown menu and select R Markdown. It is going to show up with a default template, but delete all of that stuff. Come back when you're done.
 
-## Come back to GitHub to start the fun stuff
+## Come back to GitHub 
 
 Once you get back to this page, navigate to vibes.rmd in this repo. GitHub is awesome because you should see a button in the top right corner to copy my code. You should click that button. Then you should go back to RStudio & paste it in that empty .rmd file you just created. Go back to your Spotify for Developers tab and copy & paste your Client ID and Client Secret in the setup chunk of the .rmd file. Now you're ready to run the program. You should see a white box in the top right corner with a green arrow going to the right. Click that dropdown menu and select "Run All" at the bottom. It might take a long time to run. It will probably take a long time to run. For context on what to expect I have ~4k songs saved and it takes ~15 minutes to finish running on a brand new Macbook Pro. If you click the "Knit" dropdown menu and select "Knit to HTML", it will output an interactive HTML page that takes you on a fun journey through your entire Spotify saved tracks history.
+
+## Start the Fun Part
 
 # TuneR
 Use the Spotify API to pull data about your saved tracks to learn more about your taste in music and how it changes over time.
