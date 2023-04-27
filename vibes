@@ -20,15 +20,15 @@ output: html_document
 timeStarted <- Sys.time()
 knitr::opts_chunk$set(echo = TRUE)
 ##### Required packages #####
-library(tidyverse)
-library(lubridate)
-library(plotly)
-library(spotifyr)
-library(ggwordcloud)
-library(gganimate)
-library(gifski)
-library(purrr)
-library(kableExtra)
+require(tidyverse)
+require(lubridate)
+require(plotly)
+require(spotifyr)
+require(ggwordcloud)
+require(gganimate)
+require(gifski)
+require(purrr)
+require(kableExtra)
 #####
 ##### Plot Appearance Theme #####
 myTheme <- theme(legend.position = "none",
