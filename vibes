@@ -1,14 +1,14 @@
---
+---
 title: <span style="color:white">TuneR</span>
 author: <span style="color:white"> JHCV </span>
-date: <span style="color:white"> 2023-01-31 </span>
+date: <span style="color:white"> 2023-04-25 </span>
 output: html_document
 ---
 
 <body style="background-color:#02233F">
 <font style="color:white">
 
-```{css, echo=FALSE, warning = FALSE}
+```{css, echo=FALSE, message = FALSE, warning = FALSE}
 .jhcv {
   background-color: rgb(159, 199, 219);
   border: 3px solid white;
@@ -28,6 +28,7 @@ library(ggwordcloud)
 library(gganimate)
 library(gifski)
 library(purrr)
+library(kableExtra)
 #####
 ##### Plot Appearance Theme #####
 myTheme <- theme(legend.position = "none",
@@ -56,8 +57,8 @@ myLegend <- theme(legend.position = "right",
 
 ##### Spotify API Authorization #####
 
-Sys.setenv("SPOTIFY_CLIENT_ID" = "xxx")
-Sys.setenv("SPOTIFY_CLIENT_SECRET" = "xxx")
+Sys.setenv("SPOTIFY_CLIENT_ID" = "be9d6d7f861943548a11a41bd3e3de8e")
+Sys.setenv("SPOTIFY_CLIENT_SECRET" = "29985e2247b14b3a88a38475a22aa12c")
 Sys.setenv("SPOTIFY_REDIRECT_URI" = "http://localhost:1410/")
 
 accessToken <- get_spotify_access_token(client_id = Sys.getenv("SPOTIFY_CLIENT_ID"), 
@@ -67,9 +68,80 @@ accessToken <- get_spotify_access_token(client_id = Sys.getenv("SPOTIFY_CLIENT_I
 
 ```
 
+# What have you been listening to lately?
+
+```{r, class.source="jhcv", message = FALSE}
+
+# Create function for iterating over time frames
+
+plot_genre_wordcloud <- function(timeframe = "short_term") {
+  
+  data <- get_my_top_artists_or_tracks("artists",
+                               time_range = timeframe,
+                               limit = 50) |>
+  
+  select(name, genres, popularity) |> 
+  
+  unnest(genres) |>
+  
+  select(genres) |>
+  
+  group_by(genres) |>
+  
+  summarize("n" = n())
+  
+  ggplot(data,
+         aes(label = genres,
+             size = n,
+             color = factor(genres))) +
+  
+  geom_text_wordcloud(shape = "diamond") +
+  
+  myTheme
+  
+}
+
+```
+
+## Short Term
+
+Calculated using data from the last 4 weeks. 
+
+```{r, class.source="jhcv", message = FALSE}
+
+mtg <- plot_genre_wordcloud("short_term")
+
+mtg
+
+```
+
+## Medium Term
+
+Calculated using data from the last 6 months.
+
+```{r, class.source="jhcv", message = FALSE}
+
+mtgwc <- plot_genre_wordcloud("medium_term")
+
+mtgwc
+
+```
+
+## Long Term
+
+Calculated using several years of data including all new data as it becomes available.
+
+```{r, class.source="jhcv", message = FALSE}
+
+ltgwc <- plot_genre_wordcloud("long_term")
+
+ltgwc
+
+```
+
 # Pull All Saved Tracks
 
-```{r, class.source="jhcv"}
+```{r, class.source="jhcv", message = FALSE}
 
 # Retrieve all saved tracks
 my_saved_tracks <- NULL
@@ -91,7 +163,7 @@ repeat {
            track.album.release_date)
   my_saved_tracks <- rbind(my_saved_tracks, track_data)
   saved_track_count <- saved_track_count + nrow(track_data)
-  print(paste0("Saved Tracks: ", 
+  message(paste0("Saved Tracks: ", 
                saved_track_count, 
                "/x"))
   if (nrow(track_data) < 50) {
@@ -111,7 +183,7 @@ for (i in 1:nrow(my_saved_tracks)) {
   
   if (my_saved_tracks$track.popularity[i] == 0) {
     
-    my_saved_tracks$track.popularity[i] <- 0.01
+    my_saved_tracks$track.popularity[i] <- 0.1
     
   }
   
@@ -123,7 +195,7 @@ my_saved_tracks$track.artists <- unlist(my_saved_tracks$track.artists)
 
 # Plot Release Date Histogram
 
-```{r, class.source="jhcv"}
+```{r, class.source="jhcv", warning = FALSE}
 
 mstp <- ggplot(my_saved_tracks,
                aes(x = as.Date(track.album.release_date),
@@ -144,6 +216,47 @@ ggplotly(mstp)
 ```
 
 # When did you get to the party?
+
+```{r, class.source="jhcv"}
+
+mst <- my_saved_tracks |> 
+  
+  select(added_at,
+         track.artists,
+         track.name,
+         track.album.release_date,
+         track.popularity) |>
+  
+  drop_na() |>
+  
+  arrange(added_at)
+
+msttsrda <- ggplot(mst,
+                   aes(x = as_datetime(added_at,
+                                tz = Sys.timezone()),
+                       y = as.Date(track.album.release_date),
+                       color = factor(track.name),
+                       fill = factor(track.artists),
+                       alpha = track.popularity/100)) +
+  
+  geom_point() +
+  
+  labs(x = "Date Saved",
+       y = "Release Date",
+       title = "Discovery Scatterplot") +
+  
+  scale_alpha_identity() +
+  
+  myTheme +
+  
+  transition_reveal(as_datetime(added_at,
+                                tz = Sys.timezone())) #+
+  #ease_aes("elastic-in-out") +
+  #enter_grow()
+
+animate(msttsrda, renderer = gifski_renderer())
+
+```
 
 ```{r, class.source="jhcv"}
 
@@ -170,7 +283,7 @@ ggplotly(msttsrdp)
 
 # Pull Audio Features for Saved Tracks
 
-```{r, class.source="jhcv"}
+```{r, class.source="jhcv", message = FALSE}
 
 # Get audio features for each track and combine into a single data frame
 mstafdf <- imap_dfr(my_saved_tracks$track.id, ~{
@@ -184,12 +297,12 @@ mstafdf <- imap_dfr(my_saved_tracks$track.id, ~{
 my_saved_tracks <- left_join(my_saved_tracks, mstafdf, by = c("track.id" = "id"))
 
 # View summary of my_saved_tracks
-summary(my_saved_tracks)
+#kable(summary(my_saved_tracks))
 ```
 
 # Music Map!
 
-```{r, class.source="jhcv"}
+```{r, class.source="jhcv", message = FALSE}
 
 mstafp <- ggplot(my_saved_tracks,
                  aes(x = valence,
@@ -225,7 +338,7 @@ ggplotly(mstafp)
 
 # Create Averages of Audio Features for All Saved Tracks as a Time Series
 
-```{r, class.source="jhcv"}
+```{r, class.source="jhcv", message = FALSE}
 
 my_saved_tracks <- my_saved_tracks %>%
   arrange(added_at) %>%
@@ -274,7 +387,7 @@ mstds <- my_saved_tracks |> mutate("ddate" = as.Date(added_at)) |>
 
 ```
 
-```{r, class.source="jhcv"}
+```{r, class.source="jhcv", message = FALSE}
 
 mstafa <- ggplot(my_saved_tracks,
                  aes(x = valence,
@@ -376,7 +489,7 @@ ggplotly(mkmp)
 
 ```
 
-```{r, class.source="jhcv"}
+```{r, class.source="jhcv", message = FALSE}
 
 mstpa <- ggplot(mstds,
                 aes(x = added_at,
@@ -398,7 +511,7 @@ animate(mstpa, renderer = gifski_renderer())
 
 ```
 
-```{r, class.source="jhcv"}
+```{r, class.source="jhcv", message = FALSE}
 
 mstpp <- ggplot(mstds,
                 aes(x = added_at,
@@ -416,7 +529,7 @@ ggplotly(mstpp)
 
 ```
 
-```{r, class.source="jhcv"}
+```{r, class.source="jhcv", message = FALSE}
 
 mstva <- ggplot(mstds,
                 aes(x = added_at,
@@ -438,7 +551,7 @@ animate(mstva, renderer = gifski_renderer())
 
 ```
 
-```{r, class.source="jhcv"}
+```{r, class.source="jhcv", message = FALSE}
 
 mstvp <- ggplot(mstds,
                 aes(x = added_at,
@@ -456,7 +569,7 @@ ggplotly(mstvp)
 
 ```
 
-```{r, class.source="jhcv"}
+```{r, class.source="jhcv", message = FALSE}
 
 mstea <- ggplot(mstds,
                 aes(x = added_at,
@@ -478,7 +591,7 @@ animate(mstea, renderer = gifski_renderer())
 
 ```
 
-```{r, class.source="jhcv"}
+```{r, class.source="jhcv", message = FALSE}
 
 mstep <- ggplot(mstds,
                 aes(x = added_at,
@@ -496,7 +609,7 @@ ggplotly(mstep)
 
 ```
 
-```{r, class.source="jhcv"}
+```{r, class.source="jhcv", message = FALSE}
 
 mstta <- ggplot(mstds,
                 aes(x = added_at,
@@ -518,7 +631,7 @@ animate(mstta, renderer = gifski_renderer())
 
 ```
 
-```{r, class.source="jhcv"}
+```{r, class.source="jhcv", message = FALSE}
 
 msttp <- ggplot(mstds,
                 aes(x = added_at,
@@ -536,7 +649,7 @@ ggplotly(msttp)
 
 ```
 
-```{r, class.source="jhcv"}
+```{r, class.source="jhcv", message = FALSE}
 
 mstda <- ggplot(mstds,
                 aes(x = added_at,
@@ -558,7 +671,7 @@ animate(mstda, renderer = gifski_renderer())
 
 ```
 
-```{r, class.source="jhcv"}
+```{r, class.source="jhcv", message = FALSE}
 
 mstdp <- ggplot(mstds,
                 aes(x = added_at,
@@ -576,7 +689,7 @@ ggplotly(mstdp)
 
 ```
 
-```{r, class.source="jhcv"}
+```{r, class.source="jhcv", message = FALSE}
 
 mstsa <- ggplot(mstds,
                 aes(x = added_at,
@@ -598,7 +711,7 @@ animate(mstsa, renderer = gifski_renderer())
 
 ```
 
-```{r, class.source="jhcv"}
+```{r, class.source="jhcv", message = FALSE}
 
 mstsp <- ggplot(mstds,
                 aes(x = added_at,
@@ -616,7 +729,7 @@ ggplotly(mstsp)
 
 ```
 
-```{r, class.source="jhcv"}
+```{r, class.source="jhcv", message = FALSE}
 
 mstaa <- ggplot(mstds,
                 aes(x = added_at,
@@ -638,7 +751,7 @@ animate(mstaa, renderer = gifski_renderer())
 
 ```
 
-```{r, class.source="jhcv"}
+```{r, class.source="jhcv", message = FALSE}
 
 mstap <- ggplot(mstds,
                 aes(x = added_at,
@@ -656,7 +769,7 @@ ggplotly(mstap)
 
 ```
 
-```{r, class.source="jhcv"}
+```{r, class.source="jhcv", message = FALSE}
 
 mstia <- ggplot(mstds,
                 aes(x = added_at,
@@ -678,7 +791,7 @@ animate(mstia, renderer = gifski_renderer())
 
 ```
 
-```{r, class.source="jhcv"}
+```{r, class.source="jhcv", message = FALSE}
 
 mstip <- ggplot(mstds,
                 aes(x = added_at,
@@ -696,7 +809,7 @@ ggplotly(mstip)
 
 ```
 
-```{r, class.source="jhcv"}
+```{r, class.source="jhcv", message = FALSE}
 
 mstla <- ggplot(mstds,
                 aes(x = added_at,
@@ -718,7 +831,7 @@ animate(mstla, renderer = gifski_renderer())
 
 ```
 
-```{r, class.source="jhcv"}
+```{r, class.source="jhcv", message = FALSE}
 
 mstlp <- ggplot(mstds,
                 aes(x = added_at,
@@ -738,13 +851,15 @@ ggplotly(mstlp)
 
 ***
 
+# Program Run Time
+
 ```{r, class.source="jhcv"}
 
 timeFinished <- Sys.time()
 
 timeElapsed <- timeFinished-timeStarted
 
-print(paste("This program took ",
+kable(paste("This program took ",
             round(timeElapsed, 2),
             " minutes to run.",
             sep = ""))
