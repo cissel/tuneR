@@ -857,10 +857,11 @@ timeFinished <- Sys.time()
 
 timeElapsed <- timeFinished-timeStarted
 
-kable(paste("This program took ",
-            round(timeElapsed, 2),
-            " minutes to run.",
-            sep = ""))
+tedf <- data.frame("Run Time" = paste(round(timeElapsed, 2),
+                                      " minutes",
+                                      sep = ""))
+
+kable(tedf)
 
 ```
 
