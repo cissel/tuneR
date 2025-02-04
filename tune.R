@@ -11,6 +11,7 @@ library(gganimate)
 library(gifski)
 library(purrr)
 library(magick)
+library()
 
 #####
 
@@ -46,8 +47,8 @@ myLegend <- theme(legend.position = "right",
 
 ##### Spotify API Authorization #####
 
-Sys.setenv("SPOTIFY_CLIENT_ID" = "xxx")
-Sys.setenv("SPOTIFY_CLIENT_SECRET" = "xxx")
+Sys.setenv("SPOTIFY_CLIENT_ID" = "be9d6d7f861943548a11a41bd3e3de8e")
+Sys.setenv("SPOTIFY_CLIENT_SECRET" = "29985e2247b14b3a88a38475a22aa12c")
 Sys.setenv("SPOTIFY_REDIRECT_URI" = "http://localhost:1410/")
 
 accessToken <- get_spotify_access_token(client_id = Sys.getenv("SPOTIFY_CLIENT_ID"), 
@@ -63,9 +64,17 @@ nowPlaying <- function() {
   
   artists <- paste(np$item$artist$name, collapse = " & ")
   
+  pi <- get_playlist(str_remove(np$context$uri,
+                                "spotify:playlist:"))
+  
   df <- data.frame("artist" = artists,
                    "song" = np$item$name,
-                   "album" = np$item$album$name) |> 
+                   "album" = np$item$album$name,
+                   "context" = ifelse(np$context$uri == "spotify:playlist:37i9dQZF1EYkqdzj48dyYq",
+                                      "DJ X",
+                                      paste(pi$name,
+                                            pi$owner$display_name,
+                                            sep = " - "))) |> 
     
     pivot_longer(cols = everything(),
                  names_to = "Field",
@@ -73,7 +82,7 @@ nowPlaying <- function() {
   
   tf <- tempfile(fileext = ".jpg")
   
-  download.file(get_my_currently_playing()$item$album$images$url[1],
+  download.file(np$item$album$images$url[1],
                 destfile = tf,
                 mode = "wb",
                 quiet = TRUE)
@@ -83,15 +92,7 @@ nowPlaying <- function() {
   print(ac, 
         info = FALSE)
   
-  if (df$Value[2] == df$Value[3]) {
-    
-    return(head(df, 2))
-    
-  } else {
-    
-    return(df)
-    
-  }
+  return(df)
   
 }
 
@@ -127,7 +128,7 @@ spinback <- function() {
   
   print("Yo run this one back!")
   
-  seek_to_position()
+  seek_to_position(1)
   
   return(nowPlaying())
   
@@ -171,7 +172,8 @@ plot_genre_wordcloud <- function(timeframe = "long") {
   
 }
 
-plot_artist_wordcloud <- function(timeframe = "long") {
+plot_artist_wordcloud <- function(timeframe = "long",
+                                  artists = 100) {
   
   data <- get_my_top_artists_or_tracks("artists",
                                        time_range = paste(timeframe,
@@ -180,19 +182,37 @@ plot_artist_wordcloud <- function(timeframe = "long") {
                                        limit = 50,
                                        offset = 0) |>
     
-    select(name, popularity, genres) 
+    select(name, 
+           popularity)
   
-  data$sf <- 0
-  
-  for (i in 1:nrow(data)) {
+  for (i in 2:(artists/50)) {
     
-    data$sf[i] <- (51-i)^1.2
+    d2 <- get_my_top_artists_or_tracks("artists",
+                                       time_range = paste(timeframe,
+                                                          "_term",
+                                                          sep = ""),
+                                       limit = 50,
+                                       offset = (i-1)*50) |>
+      
+      select(name, 
+             popularity)
+    
+    df <- rbind(data,
+                d2)
     
   }
   
-  ggplot(data,
+  df$bt <- 0
+  
+  for (i in 1:nrow(df)) {
+    
+    df$bt[i] <- ((nrow(df)+1)-i)
+    
+  }
+  
+  ggplot(df,
          aes(label = name,
-             size = sf,
+             size = bt,
              color = factor(name))) +
     
     geom_text_wordcloud(shape = "diamond") +
