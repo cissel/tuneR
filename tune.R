@@ -47,8 +47,8 @@ myLegend <- theme(legend.position = "right",
 
 ##### Spotify API Authorization #####
 
-Sys.setenv("SPOTIFY_CLIENT_ID" = "be9d6d7f861943548a11a41bd3e3de8e")
-Sys.setenv("SPOTIFY_CLIENT_SECRET" = "29985e2247b14b3a88a38475a22aa12c")
+Sys.setenv("SPOTIFY_CLIENT_ID" = "xxx")
+Sys.setenv("SPOTIFY_CLIENT_SECRET" = "xxx")
 Sys.setenv("SPOTIFY_REDIRECT_URI" = "http://localhost:1410/")
 
 accessToken <- get_spotify_access_token(client_id = Sys.getenv("SPOTIFY_CLIENT_ID"), 
