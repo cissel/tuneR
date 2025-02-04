@@ -1,0 +1,974 @@
+---
+title: <span style="color:white">TuneR</span>
+author: <span style="color:white"> JHCV </span>
+date: <span style="color:white"> 2023-04-25 </span>
+output: html_document
+---
+
+<body style="background-color:#02233F">
+<font style="color:white">
+
+```{css, echo=FALSE, message = FALSE, warning = FALSE}
+.jhcv {
+  background-color: rgb(159, 199, 219);
+  border: 3px solid white;
+  font-weight: bold;
+}
+```
+
+```{r setup, include=TRUE, class.source="jhcv", warning = FALSE, message = FALSE}
+timeStarted <- Sys.time()
+knitr::opts_chunk$set(echo = TRUE)
+##### Required packages #####
+require(tidyverse)
+require(lubridate)
+require(plotly)
+require(spotifyr)
+require(ggwordcloud)
+require(gganimate)
+require(gifski)
+require(purrr)
+require(kableExtra)
+#####
+##### Plot Appearance Theme #####
+myTheme <- theme(legend.position = "none",
+                 plot.background = element_rect(fill = "#02233F"),
+                 panel.background = element_rect(fill = "#02233F"),
+                 panel.grid = element_line(color = "#274066"),
+                 axis.text = element_text(color = "white"),
+                 axis.title = element_text(color = "white",
+                                           hjust = .5),
+                 plot.title = element_text(color = "white",
+                                           hjust = .5),
+                 plot.subtitle = element_text(color = "white",
+                                              hjust = .5),
+                 strip.background = element_rect(fill = "#02233F"),
+                 strip.text.x = element_text(color = "white"),
+                 plot.caption = element_text(color = "white",
+                                             size = 5))
+#####
+##### Legend appearance theme #####
+myLegend <- theme(legend.position = "right",
+                  legend.background = element_rect(fill = "#02233F"),
+                  legend.text = element_text(color = "white"),
+                  legend.title = element_text(color = "white",
+                                              hjust = .5))
+#####
+
+##### Spotify API Authorization #####
+
+Sys.setenv("SPOTIFY_CLIENT_ID" = "be9d6d7f861943548a11a41bd3e3de8e")
+Sys.setenv("SPOTIFY_CLIENT_SECRET" = "29985e2247b14b3a88a38475a22aa12c")
+Sys.setenv("SPOTIFY_REDIRECT_URI" = "http://localhost:1410/")
+
+accessToken <- get_spotify_access_token(client_id = Sys.getenv("SPOTIFY_CLIENT_ID"), 
+                                        client_secret = Sys.getenv("SPOTIFY_CLIENT_SECRET"))
+
+##### 
+
+```
+
+# What have you been listening to lately?
+
+```{r, class.source="jhcv", message = FALSE}
+
+# Create function for iterating over time frames
+
+plot_genre_wordcloud <- function(timeframe = "short") {
+  
+  data <- get_my_top_artists_or_tracks("artists",
+                               time_range = paste(timeframe,
+                                                  "_term",
+                                                  sep = ""),
+                               limit = 50) |>
+  
+  select(name, genres, popularity) |> 
+  
+  unnest(genres) |>
+  
+  select(genres) |>
+  
+  group_by(genres) |>
+  
+  summarize("n" = n())
+  
+  ggplot(data,
+         aes(label = genres,
+             size = n,
+             color = factor(genres))) +
+  
+  geom_text_wordcloud(shape = "diamond") +
+  
+  myTheme
+  
+}
+
+plot_artist_wordcloud <- function(timeframe = "long") {
+  
+  data <- get_my_top_artists_or_tracks("artists",
+                                       time_range = paste(timeframe,
+                                                          "_term",
+                                                          sep = ""),
+                                       limit = 50,
+                                       offset = 0) |>
+    
+    select(name, popularity, genres) 
+  
+  data$sf <- 0
+  
+  for (i in 1:nrow(data)) {
+    
+    data$sf[i] <- (51-i)^1.2
+    
+  }
+  
+  ggplot(data,
+         aes(label = name,
+             size = sf,
+             color = factor(name))) +
+    
+    geom_text_wordcloud(shape = "diamond") +
+    
+    myTheme
+  
+}
+
+```
+
+## Short Term
+
+Calculated using data from the last 4 weeks. 
+
+```{r, class.source="jhcv", message = FALSE}
+
+mtg <- plot_genre_wordcloud("short_term")
+
+mtg
+
+```
+
+## Medium Term
+
+Calculated using data from the last 6 months.
+
+```{r, class.source="jhcv", message = FALSE}
+
+mtgwc <- plot_genre_wordcloud("medium_term")
+
+mtgwc
+
+```
+
+## Long Term
+
+Calculated using several years of data including all new data as it becomes available.
+
+```{r, class.source="jhcv", message = FALSE}
+
+ltgwc <- plot_genre_wordcloud("long_term")
+
+ltgwc
+
+```
+
+# Pull All Saved Tracks
+
+```{r, class.source="jhcv", message = FALSE}
+
+# Retrieve all saved tracks
+my_saved_tracks <- NULL
+offset <- 0
+saved_track_count <- 0
+repeat {
+  track_data <- get_my_saved_tracks(limit = 50, 
+                                    offset = offset) |>
+    select(added_at,
+           track.artists,
+           track.duration_ms,
+           track.explicit,
+           track.id,
+           track.name,
+           track.popularity,
+           track.album.id,
+           track.album.images,
+           track.album.name,
+           track.album.release_date)
+  my_saved_tracks <- rbind(my_saved_tracks, track_data)
+  saved_track_count <- saved_track_count + nrow(track_data)
+  message(paste0("Saved Tracks: ", 
+               saved_track_count, 
+               "/x"))
+  if (nrow(track_data) < 50) {
+    break
+  }
+  offset <- offset + 50
+}
+
+my_saved_tracks$added_at <- as_datetime(my_saved_tracks$added_at,
+                                        tz = Sys.timezone())
+
+my_saved_tracks$track.album.release_date <- as.Date(my_saved_tracks$track.album.release_date)
+
+for (i in 1:nrow(my_saved_tracks)) {
+  
+  my_saved_tracks$track.artists[[i]] <- my_saved_tracks$track.artists[[i]]$name[1]
+  
+  if (my_saved_tracks$track.popularity[i] == 0) {
+    
+    my_saved_tracks$track.popularity[i] <- 0.1
+    
+  }
+  
+}
+
+my_saved_tracks$track.artists <- unlist(my_saved_tracks$track.artists)
+
+# - Fixing Outliers - Buju Banton realeased "Hills and Valleys" in 1997, not 1900 lol
+
+my_saved_tracks <- my_saved_tracks |> 
+  mutate(track.album.release_date = case_when(
+    track.artists == "Buju Banton" & track.name == "Hills And Valleys" ~ as.Date("1997-11-18"),
+    TRUE ~ track.album.release_date  # Keeps existing dates unchanged
+  ))
+
+```
+
+# Plot Release Date Histogram
+
+```{r, class.source="jhcv", warning = FALSE}
+
+mstp <- ggplot(my_saved_tracks,
+               aes(x = as.Date(track.album.release_date),
+                   color = factor(track.artists),
+                   weight = ..density..)) +
+  
+  geom_histogram(fill = "white",
+                 bins = 100) +
+  
+  labs(x = "Release Date",
+       y = "Density",
+       title = "Release Date Histogram") +
+  
+  myTheme
+
+ggplotly(mstp)
+
+```
+
+# When did you get to the party?
+
+```{r, class.source="jhcv"}
+
+mst <- my_saved_tracks |> 
+  
+  select(added_at,
+         track.artists,
+         track.name,
+         track.album.release_date,
+         track.popularity) |>
+  
+  drop_na() |>
+  
+  arrange(added_at)
+
+msttsrda <- ggplot(mst,
+                   aes(x = as_datetime(added_at,
+                                tz = Sys.timezone()),
+                       y = as.Date(track.album.release_date),
+                       color = factor(track.name),
+                       fill = factor(track.artists),
+                       alpha = track.popularity/100)) +
+  
+  geom_point() +
+  
+  labs(x = "Date Saved",
+       y = "Release Date",
+       title = "Discovery Scatterplot") +
+  
+  scale_alpha_identity() +
+  
+  myTheme +
+  
+  transition_reveal(as_datetime(added_at,
+                                tz = Sys.timezone())) #+
+  #ease_aes("elastic-in-out") +
+  #enter_grow()
+
+animate(msttsrda, renderer = gifski_renderer())
+
+```
+
+```{r, class.source="jhcv"}
+
+msttsrdp <- ggplot(my_saved_tracks,
+                   aes(x = added_at,
+                       y = as.Date(track.album.release_date),
+                       color = factor(track.name),
+                       fill = factor(track.artists),
+                       alpha = track.popularity/100)) +
+  
+  geom_point() +
+  
+  labs(x = "Date Saved",
+       y = "Release Date",
+       title = "Discovery Scatterplot") +
+  
+  scale_alpha_identity() +
+  
+  myTheme 
+
+ggplotly(msttsrdp)
+
+```
+
+```{r}
+
+nowPlaying <- function() {
+  
+  np <- get_my_currently_playing()
+  
+  artists <- paste(np$item$artist$name, collapse = " & ")
+  
+  df <- data.frame("artist" = artists,
+                   "song" = np$item$name,
+                   "album" = np$item$album$name) |> 
+    
+  pivot_longer(cols = everything(),
+               names_to = "Field",
+               values_to = "Value")
+  
+  tf <- tempfile(fileext = ".jpg")
+  
+  download.file(get_my_currently_playing()$item$album$images$url[1],
+                destfile = tf,
+                mode = "wb",
+                quiet = TRUE)
+  
+  ac <- image_read(tf)
+  
+  print(ac, 
+        info = FALSE)
+  
+  if (df$Value[2] == df$Value[3]) {
+    
+    return(head(df, 2))
+    
+  } else {
+    
+    return(df)
+    
+  }
+  
+}
+
+skip <- function() {
+  
+  np <- nowPlaying()
+  
+  print(paste("Skipping:",
+              np$Value[2],
+              "by",
+              np$Value[1],
+              sep = " "))
+  
+  print("Now playing: ")
+  
+  skip_my_playback()
+  
+  return(nowPlaying())
+  
+}
+
+```
+
+***
+
+# Pull Audio Features for Saved Tracks
+
+```{r, class.source="jhcv", message = FALSE}
+
+# Get audio features for each track and combine into a single data frame
+mstafdf <- imap_dfr(my_saved_tracks$track.id, ~{
+  
+  mstaf <- get_track_audio_features(.x)
+  
+  message(paste("Track ", .y, " out of ", length(my_saved_tracks$track.id), 
+                " // ", round((.y/length(my_saved_tracks$track.id))*100, 2), "%"))
+  
+  mstaf
+  
+})
+
+# Merge audio features with my_saved_tracks using left_join
+my_saved_tracks <- left_join(my_saved_tracks, mstafdf, by = c("track.id" = "id"))
+
+# View summary of my_saved_tracks
+#kable(summary(my_saved_tracks))
+```
+
+# Music Map!
+
+```{r, class.source="jhcv", message = FALSE}
+
+mstafp <- ggplot(my_saved_tracks,
+                 aes(x = valence,
+                     y = energy,
+                     color = factor(track.name),
+                     fill = factor(track.artists),
+                     alpha = track.popularity/100)) +
+  
+  geom_vline(xintercept = 0.5,
+             color = "white") +
+  geom_hline(yintercept = 0.5,
+             color = "white") +
+  
+  geom_vline(aes(xintercept = mean(valence)),
+             color = "cyan") +
+  
+  geom_hline(aes(yintercept = mean(energy)),
+             color = "cyan") +
+  
+  geom_point() +
+  
+  labs(x = "Valence",
+       y = "Energy",
+       title = "Vibe Map") +
+  
+  scale_alpha_identity() +
+  
+  myTheme
+
+ggplotly(mstafp)
+
+```
+
+# Create Averages of Audio Features for All Saved Tracks as a Time Series
+
+```{r, class.source="jhcv", message = FALSE}
+
+my_saved_tracks <- my_saved_tracks %>%
+  arrange(added_at) %>%
+  mutate(
+    index = 1:n(),
+    rmPop = cummean(track.popularity),
+    rmValence = cummean(valence),
+    rmEnergy = cummean(energy),
+    rmTempo = cummean(tempo),
+    rmDance = cummean(danceability),
+    rmSpeech = cummean(speechiness),
+    rmAcoustic = cummean(acousticness),
+    rmInstrument = cummean(instrumentalness),
+    rmLiveness = cummean(liveness)
+  )
+
+mstds <- my_saved_tracks |> mutate("ddate" = as.Date(added_at)) |>
+  
+  select(added_at,
+         track.artists,
+         track.name,
+         track.album.name,
+         key,
+         mode,
+         tempo,
+         time_signature,
+         track.popularity,
+         energy,
+         danceability,
+         loudness,
+         speechiness,
+         acousticness,
+         instrumentalness,
+         liveness,
+         rmPop,
+         rmValence,
+         rmEnergy,
+         rmTempo,
+         rmDance,
+         rmSpeech,
+         rmAcoustic,
+         rmInstrument,
+         rmLiveness)
+
+```
+
+```{r, class.source="jhcv", message = FALSE}
+
+mstafa <- ggplot(my_saved_tracks,
+                 aes(x = valence,
+                     y = energy,
+                     color = factor(track.name),
+                     fill = factor(track.artists),
+                     alpha = track.popularity/100)) +
+  
+  geom_vline(xintercept = 0.5,
+             color = "white") +
+  geom_hline(yintercept = 0.5,
+             color = "white") +
+  
+  geom_vline(aes(xintercept = rmValence),
+             color = "cyan") +
+  
+  geom_hline(aes(yintercept = rmEnergy),
+             color = "cyan") +
+  
+  geom_point() +
+  
+  labs(x = "Valence",
+       y = "Energy",
+       subtitle = "Songs Saved by {frame_along}",
+       title = "Music Taste Evolution!") +
+  
+  scale_alpha_identity() +
+  
+  myTheme +
+  
+  transition_reveal(added_at) +
+  view_follow() +
+  ease_aes("elastic-in-out")
+
+animate(mstafa, renderer = gifski_renderer())
+
+```
+
+```{r, class.source="jhcv"}
+
+kdf <- data.frame("kn" = 0:11,
+                  "kl" = c("C",
+                           "C#",
+                           "D",
+                           "D#",
+                           "E",
+                           "F",
+                           "F#",
+                           "G",
+                           "G#",
+                           "A",
+                           "A#",
+                           "B"))
+
+mdf <- data.frame("mn" = c(1, 0),
+                  "ml" = c("major",
+                           "minor"))
+
+kmdf <- mstds |> select(key, mode) 
+
+kmdf <- left_join(kmdf, kdf, by = c("key" = "kn"))
+
+kmdf <- left_join(kmdf, mdf, by = c("mode" = "mn"))
+
+kmdf$km <- ""
+
+for (i in 1:nrow(kmdf)) {
+  
+  kmdf$km[i] <- paste(kmdf$kl[i], kmdf$ml[i], sep = " ")
+  
+}
+
+kmdfs <- kmdf |> group_by(km) |> summarize("n" = n()) |> arrange(desc(n))
+
+mkmp <- ggplot(kmdfs,
+               aes(x = fct_reorder(km, n),
+                   weight = n,
+                   fill = fct_reorder(km, n))) +
+  
+  geom_bar() +
+  
+  geom_text(aes(y = n/2,
+                label = km),
+            color = "white") +
+  
+  labs(x = "Key & Mode",
+       y = "Number of Tracks Saved",
+       title = "My Favorite Keys & Modes") +
+  
+  myTheme +
+  
+  coord_flip() +
+  
+  theme(axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid = element_blank())
+
+ggplotly(mkmp)
+
+```
+
+```{r, class.source="jhcv", message = FALSE}
+
+mstpa <- ggplot(mstds,
+                aes(x = added_at,
+                    y = rmPop)) +
+  
+  geom_line(color = "white") +
+  
+  labs(x = "Time",
+       y = "Popularity",
+       title = "Popularity Over Time") +
+  
+  myTheme +
+  
+  transition_reveal(added_at) +
+  view_follow() +
+  ease_aes("elastic-in-out")
+
+animate(mstpa, renderer = gifski_renderer())
+
+```
+
+```{r, class.source="jhcv", message = FALSE}
+
+mstpp <- ggplot(mstds,
+                aes(x = added_at,
+                    y = rmPop)) +
+  
+  geom_line(color = "white") +
+  
+  labs(x = "Time",
+       y = "Popularity",
+       title = "Popularity Over Time") +
+  
+  myTheme
+
+ggplotly(mstpp)
+
+```
+
+```{r, class.source="jhcv", message = FALSE}
+
+mstva <- ggplot(mstds,
+                aes(x = added_at,
+                    y = rmValence)) +
+  
+  geom_line(color = "white") +
+  
+  labs(x = "Time",
+       y = "Valence",
+       title = "Valence Over Time") +
+  
+  myTheme +
+  
+  transition_reveal(added_at) +
+  view_follow() +
+  ease_aes("elastic-in-out")
+
+animate(mstva, renderer = gifski_renderer())
+
+```
+
+```{r, class.source="jhcv", message = FALSE}
+
+mstvp <- ggplot(mstds,
+                aes(x = added_at,
+                    y = rmValence)) +
+  
+  geom_line(color = "white") +
+  
+  labs(x = "Time",
+       y = "Valence",
+       title = "Valence Over Time") +
+  
+  myTheme
+
+ggplotly(mstvp)
+
+```
+
+```{r, class.source="jhcv", message = FALSE}
+
+mstea <- ggplot(mstds,
+                aes(x = added_at,
+                    y = rmEnergy)) +
+  
+  geom_line(color = "white") +
+  
+  labs(x = "Time",
+       y = "Energy",
+       title = "Energy Over Time") +
+  
+  myTheme +
+  
+  transition_reveal(added_at) +
+  view_follow() +
+  ease_aes("elastic-in-out")
+
+animate(mstea, renderer = gifski_renderer())
+
+```
+
+```{r, class.source="jhcv", message = FALSE}
+
+mstep <- ggplot(mstds,
+                aes(x = added_at,
+                    y = rmEnergy)) +
+  
+  geom_line(color = "white") +
+  
+  labs(x = "Time",
+       y = "Energy",
+       title = "Energy Over Time") +
+  
+  myTheme
+
+ggplotly(mstep)
+
+```
+
+```{r, class.source="jhcv", message = FALSE}
+
+mstta <- ggplot(mstds,
+                aes(x = added_at,
+                    y = rmTempo)) +
+  
+  geom_line(color = "white") +
+  
+  labs(x = "Time",
+       y = "Tempo",
+       title = "Tempo Over Time") +
+  
+  myTheme +
+  
+  transition_reveal(added_at) +
+  view_follow() +
+  ease_aes("elastic-in-out")
+
+animate(mstta, renderer = gifski_renderer())
+
+```
+
+```{r, class.source="jhcv", message = FALSE}
+
+msttp <- ggplot(mstds,
+                aes(x = added_at,
+                    y = rmTempo)) +
+  
+  geom_line(color = "white") +
+  
+  labs(x = "Time",
+       y = "Tempo",
+       title = "Tempo Over Time") +
+  
+  myTheme
+
+ggplotly(msttp)
+
+```
+
+```{r, class.source="jhcv", message = FALSE}
+
+mstda <- ggplot(mstds,
+                aes(x = added_at,
+                    y = rmDance)) +
+  
+  geom_line(color = "white") +
+  
+  labs(x = "Time",
+       y = "Danceability",
+       title = "Danceability Over Time") +
+  
+  myTheme +
+  
+  transition_reveal(added_at) +
+  view_follow() +
+  ease_aes("elastic-in-out")
+
+animate(mstda, renderer = gifski_renderer())
+
+```
+
+```{r, class.source="jhcv", message = FALSE}
+
+mstdp <- ggplot(mstds,
+                aes(x = added_at,
+                    y = rmDance)) +
+  
+  geom_line(color = "white") +
+  
+  labs(x = "Time",
+       y = "Danceability",
+       title = "Danceability Over Time") +
+  
+  myTheme
+
+ggplotly(mstdp)
+
+```
+
+```{r, class.source="jhcv", message = FALSE}
+
+mstsa <- ggplot(mstds,
+                aes(x = added_at,
+                    y = rmSpeech)) +
+  
+  geom_line(color = "white") +
+  
+  labs(x = "Time",
+       y = "Speechiness",
+       title = "Speechiness Over Time") +
+  
+  myTheme +
+  
+  transition_reveal(added_at) +
+  view_follow() +
+  ease_aes("elastic-in-out")
+
+animate(mstsa, renderer = gifski_renderer())
+
+```
+
+```{r, class.source="jhcv", message = FALSE}
+
+mstsp <- ggplot(mstds,
+                aes(x = added_at,
+                    y = rmSpeech)) +
+  
+  geom_line(color = "white") +
+  
+  labs(x = "Time",
+       y = "Speechiness",
+       title = "Speechiness Over Time") +
+  
+  myTheme
+
+ggplotly(mstsp)
+
+```
+
+```{r, class.source="jhcv", message = FALSE}
+
+mstaa <- ggplot(mstds,
+                aes(x = added_at,
+                    y = rmAcoustic)) +
+  
+  geom_line(color = "white") +
+  
+  labs(x = "Time",
+       y = "Acousticness",
+       title = "Acousticness Over Time") +
+  
+  myTheme +
+  
+  transition_reveal(added_at) +
+  view_follow() +
+  ease_aes("elastic-in-out")
+
+animate(mstaa, renderer = gifski_renderer())
+
+```
+
+```{r, class.source="jhcv", message = FALSE}
+
+mstap <- ggplot(mstds,
+                aes(x = added_at,
+                    y = rmAcoustic)) +
+  
+  geom_line(color = "white") +
+  
+  labs(x = "Time",
+       y = "Acousticness",
+       title = "Acousticness Over Time") +
+  
+  myTheme
+
+ggplotly(mstap)
+
+```
+
+```{r, class.source="jhcv", message = FALSE}
+
+mstia <- ggplot(mstds,
+                aes(x = added_at,
+                    y = rmInstrument)) +
+  
+  geom_line(color = "white") +
+  
+  labs(x = "Time",
+       y = "Instrumentalness",
+       title = "Instrumentalness Over Time") +
+  
+  myTheme +
+  
+  transition_reveal(added_at) +
+  view_follow() +
+  ease_aes("elastic-in-out")
+
+animate(mstia, renderer = gifski_renderer())
+
+```
+
+```{r, class.source="jhcv", message = FALSE}
+
+mstip <- ggplot(mstds,
+                aes(x = added_at,
+                    y = rmInstrument)) +
+  
+  geom_line(color = "white") +
+  
+  labs(x = "Time",
+       y = "Instrumentalness",
+       title = "Instrumentalness Over Time") +
+  
+  myTheme
+
+ggplotly(mstip)
+
+```
+
+```{r, class.source="jhcv", message = FALSE}
+
+mstla <- ggplot(mstds,
+                aes(x = added_at,
+                    y = rmLiveness)) +
+  
+  geom_line(color = "white") +
+  
+  labs(x = "Time",
+       y = "Liveness",
+       title = "Liveness Over Time") +
+  
+  myTheme +
+  
+  transition_reveal(added_at) +
+  view_follow() +
+  ease_aes("elastic-in-out")
+
+animate(mstla, renderer = gifski_renderer())
+
+```
+
+```{r, class.source="jhcv", message = FALSE}
+
+mstlp <- ggplot(mstds,
+                aes(x = added_at,
+                    y = rmLiveness)) +
+  
+  geom_line(color = "white") +
+  
+  labs(x = "Time",
+       y = "Liveness",
+       title = "Liveness Over Time") +
+  
+  myTheme
+
+ggplotly(mstlp)
+
+```
+
+***
+
+# Program Run Time
+
+```{r, class.source="jhcv"}
+
+timeFinished <- Sys.time()
+
+timeElapsed <- timeFinished-timeStarted
+
+tedf <- data.frame("Run Time" = paste(round(timeElapsed, 2),
+                                      " minutes",
+                                      sep = ""))
+
+kable(tedf)
+
+```
+
+***
