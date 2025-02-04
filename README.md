@@ -2,7 +2,9 @@
 Use the Spotify API to pull data about your saved tracks to learn more about your taste in music and how it changes over time.
 
 ## Update Feb 4 2025
-###Unfortunately a lot of the really cool endpoints in the Spotify API are deprecated so most of vibes.Rmd will not work if you try to run it now. For now tune.R is the best I have but I'll update the rest of this README later.
+Unfortunately a lot of the really cool endpoints in the Spotify API are deprecated so most of vibes.Rmd will not work if you try to run it now. For now tune.R is the best I have but I'll update the rest of this README later.
+
+## Vibes
 
 Check out a wordcloud of your favorite genres.
 
