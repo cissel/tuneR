@@ -11,7 +11,6 @@ library(gganimate)
 library(gifski)
 library(purrr)
 library(magick)
-library()
 
 #####
 
@@ -67,6 +66,8 @@ nowPlaying <- function() {
   pi <- get_playlist(str_remove(np$context$uri,
                                 "spotify:playlist:"))
   
+  # This one has a catch condition for my Spotify DJ
+  # You might need to update this URL for your own DJ
   df <- data.frame("artist" = artists,
                    "song" = np$item$name,
                    "album" = np$item$album$name,
@@ -138,12 +139,45 @@ spinback <- function() {
 
 ##### Top Artists & Genres Functions #####
 
+myTopArtists <- function(artists = 100,
+                         timeframe = "long") {
+  
+  d1 <- get_my_top_artists_or_tracks("artists",
+                                     time_range = paste(timeframe,
+                                                        "_term",
+                                                        sep = ""),
+                                     limit = 50,
+                                     offset = 0) |>
+    
+    select(name, 
+           popularity)
+  
+  for (i in 2:(artists/50)) {
+    
+    d2 <- get_my_top_artists_or_tracks("artists",
+                                       time_range = paste(timeframe,
+                                                          "_term",
+                                                          sep = ""),
+                                       limit = 50,
+                                       offset = (i-1)*50) |>
+      
+      select(name,
+             popularity)
+    
+    df <- rbind(d1, d2)
+    
+  }
+  
+  return(df)
+  
+}
+
 ## TIMEFRAME OPTIONS:
 # short - last 4 weeks
 # medium - last 6 months
 # long - all time listening history (default)
 
-plot_genre_wordcloud <- function(timeframe = "long") {
+plotGenreWordcloud <- function(timeframe = "long") {
   
   data <- get_my_top_artists_or_tracks("artists",
                                        time_range = paste(timeframe,
@@ -172,35 +206,10 @@ plot_genre_wordcloud <- function(timeframe = "long") {
   
 }
 
-plot_artist_wordcloud <- function(timeframe = "long",
-                                  artists = 100) {
+plotArtistWordcloud <- function(timeframe = "long",
+                                artists = 100) {
   
-  data <- get_my_top_artists_or_tracks("artists",
-                                       time_range = paste(timeframe,
-                                                          "_term",
-                                                          sep = ""),
-                                       limit = 50,
-                                       offset = 0) |>
-    
-    select(name, 
-           popularity)
-  
-  for (i in 2:(artists/50)) {
-    
-    d2 <- get_my_top_artists_or_tracks("artists",
-                                       time_range = paste(timeframe,
-                                                          "_term",
-                                                          sep = ""),
-                                       limit = 50,
-                                       offset = (i-1)*50) |>
-      
-      select(name, 
-             popularity)
-    
-    df <- rbind(data,
-                d2)
-    
-  }
+  df <- myTopArtists(100, "long")
   
   df$bt <- 0
   
