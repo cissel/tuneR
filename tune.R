@@ -172,6 +172,41 @@ myTopArtists <- function(artists = 100,
   
 }
 
+myTopTracks <- function(tracks = 10,
+                        timeframe = "long") {
+  
+  d1 <- get_my_top_artists_or_tracks("tracks",
+                                     time_range = paste(timeframe,
+                                                        "_term",
+                                                        sep = ""),
+                                     limit = 50,
+                                     offset = 0) #|>
+    
+    #select(name,
+    #       artists$name,
+    #       popularity)
+  
+  for (i in 2:(tracks/50)) {
+    
+    d2 <- get_my_top_artists_or_tracks("tracks",
+                                       time_range = paste(timeframe,
+                                                          "_term",
+                                                          sep = ""),
+                                       limit = 50,
+                                       offset = (i-1)*50) #|>
+      
+      #select(name,
+      #       artists,
+      #       popularity)
+    
+    df <- rbind(d1, d2)
+    
+  }
+  
+  return(df)
+  
+}
+
 ## TIMEFRAME OPTIONS:
 # short - last 4 weeks
 # medium - last 6 months
@@ -209,7 +244,7 @@ plotGenreWordcloud <- function(timeframe = "long") {
 plotArtistWordcloud <- function(timeframe = "long",
                                 artists = 100) {
   
-  df <- myTopArtists(100, "long")
+  df <- myTopArtists(100, timeframe)
   
   df$bt <- 0
   
